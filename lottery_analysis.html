@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D彩票必赢组合分析</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Microsoft YaHei", Arial, sans-serif; background: #f5f5f5; height: 100vh; display: flex; flex-direction: column; }
+        header { background: #2c3e50; color: white; padding: 10px 20px; font-size: 16px; font-weight: bold; }
+        .container { display: flex; flex: 1; overflow: hidden; }
+        .left-panel { width: 480px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
+        .left-panel .sections-wrapper { flex: 1; display: flex; overflow: hidden; }
+        .left-panel .sections { flex: 1; overflow-y: auto; }
+        .left-panel .section { padding: 6px 10px; border-bottom: 1px solid #eee; }
+        .left-panel .section:last-child { border-bottom: none; }
+        .left-panel .section h3 { font-size: 11px; color: #888; margin-bottom: 3px; }
+        .left-panel .section h4 { font-size: 10px; color: #aaa; margin: 3px 0 2px 0; }
+        .left-panel .item { display: flex; align-items: center; padding: 2px 0; }
+        .left-panel .item label { flex: 1; font-size: 11px; color: #555; white-space: nowrap; }
+        .left-panel .item label .sub { color: #999; font-size: 10px; white-space: nowrap; }
+        .left-panel .item input::-webkit-inner-spin-button,
+        .left-panel .item input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .left-panel .item input[type=number] { -moz-appearance: textfield; }
+        .left-panel .item input { width: 50px; padding: 3px; border: 1px solid #ddd; border-radius: 3px; font-size: 11px; }
+        .left-panel .item input::placeholder { color: #ccc; }
+        .left-panel .item input.active { background: #e8f8f0; border-color: #27ae60; }
+        .left-panel .bottom-bar { background: #f8f9fa; padding: 8px 10px; border-top: 1px solid #ddd; flex-shrink: 0; display: flex; align-items: center; gap: 10px; }
+        .left-panel .rebate-row { display: flex; align-items: center; gap: 6px; }
+        .left-panel .rebate-row label { font-size: 11px; color: #555; }
+        .left-panel .rebate-row input { width: 50px; padding: 3px; border: 1px solid #ddd; border-radius: 3px; font-size: 11px; }
+        .left-panel .btn-row { display: flex; gap: 6px; flex: 1; }
+        .left-panel .btn { flex: 1; padding: 8px; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; }
+        .left-panel .btn-primary { background: #27ae60; color: white; }
+        .left-panel .btn-secondary { background: #95a5a6; color: white; }
+        .right-panel { flex: 1; padding: 10px; overflow-y: auto; }
+        .result-box { background: white; border-radius: 6px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 5px rgba(0,0,0,0.1); }
+        .result-box h3 { color: #2c3e50; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid #27ae60; font-size: 14px; }
+        .strategy { background: #f8f9fa; border-radius: 6px; padding: 10px; margin-bottom: 10px; border-left: 3px solid #27ae60; }
+        .strategy h4 { color: #2c3e50; margin-bottom: 6px; font-size: 13px; }
+        .strategy .detail { font-size: 12px; color: #555; line-height: 1.6; }
+        .strategy .profit { font-size: 14px; font-weight: bold; color: #27ae60; margin-top: 6px; }
+        .summary { background: linear-gradient(135deg, #27ae60, #2ecc71); color: white; padding: 15px; border-radius: 6px; text-align: center; margin-bottom: 15px; }
+        .summary h2 { margin-bottom: 5px; font-size: 14px; }
+        .summary .big { font-size: 28px; font-weight: bold; }
+        .empty { text-align: center; padding: 40px 20px; color: #999; font-size: 14px; }
+        .formula { background: #f0f0f0; padding: 8px; border-radius: 4px; font-size: 11px; line-height: 1.6; flex-shrink: 0; }
+        .cost-item { background: #e8f8f0; padding: 6px 10px; border-radius: 3px; margin: 4px 0; font-size: 12px; }
+        .btn-analyze { background: #27ae60 !important; font-size: 14px; }
+        .tab-bar { display: flex; background: #2c3e50; }
+        .tab-btn { flex: 1; padding: 6px; border: none; background: transparent; color: #aaa; font-size: 12px; cursor: pointer; border-bottom: 2px solid transparent; }
+        .tab-btn.active { color: white; border-bottom-color: #27ae60; }
+        .tab-content { display: none; flex: 1; overflow: hidden; }
+        .tab-content.active { display: flex; }
+    </style>
+</head>
+<body>
+    <header>3D彩票必赢组合分析</header>
+    <div class="container">
+        <div class="left-panel">
+            <div class="tab-bar">
+                <button class="tab-btn active" onclick="switchTab('group', event)">组选</button>
+                <button class="tab-btn" onclick="switchTab('fushi', event)">复式</button>
+                <button class="tab-btn" onclick="switchTab('span', event)">跨度</button>
+                <button class="tab-btn" onclick="switchTab('he', event)">和值</button>
+            </div>
+            <div class="tab-content active" id="tab-group">
+                <div class="sections-wrapper">
+                    <div class="sections">
+                        <div class="section">
+                            <h3>组三</h3>
+                            <div class="item"><label>组三两码 <span class="sub">45组x6注x1组</span></label><input type="number" id="g3_2" data-type="g3" step="0.1" placeholder="150"></div>
+                            <div class="item"><label>组三三码 <span class="sub">120组x18注x8组</span></label><input type="number" id="g3_3" data-type="g3" step="0.1" placeholder="50"></div>
+                            <div class="item"><label>组三四码 <span class="sub">210组x36注x28组</span></label><input type="number" id="g3_4" data-type="g3" step="0.1" placeholder="25"></div>
+                            <div class="item"><label>组三五码 <span class="sub">252组x60注x56组</span></label><input type="number" id="g3_5" data-type="g3" step="0.1" placeholder="15"></div>
+                            <div class="item"><label>组三六码 <span class="sub">210组x90注x70组</span></label><input type="number" id="g3_6" data-type="g3" step="0.1" placeholder="10"></div>
+                            <div class="item"><label>组三七码 <span class="sub">120组x126注x56组</span></label><input type="number" id="g3_7" data-type="g3" step="0.1" placeholder="7.2"></div>
+                            <div class="item"><label>组三八码 <span class="sub">45组x168注x28组</span></label><input type="number" id="g3_8" data-type="g3" step="0.1" placeholder="5.3"></div>
+                            <div class="item"><label>组三九码 <span class="sub">10组x216注x8组</span></label><input type="number" id="g3_9" data-type="g3" step="0.1" placeholder="4.2"></div>
+                            <div class="item"><label>组三全包 <span class="sub">1组x270注x1组</span></label><input type="number" id="g3_all" data-type="g3" step="0.1" placeholder="3.3"></div>
+                            <h4>沾边赖</h4>
+                            <div class="item"><label>沾边赖1码 <span class="sub">10组x54注x2组</span></label><input type="number" id="zg3_1" data-type="g3" step="0.1" placeholder="16.66"></div>
+                            <div class="item"><label>沾边赖2码 <span class="sub">45组x102注x17组</span></label><input type="number" id="zg3_2" data-type="g3" step="0.1" placeholder="8.82"></div>
+                            <div class="item"><label>沾边赖3码 <span class="sub">120组x144注x64组</span></label><input type="number" id="zg3_3" data-type="g3" step="0.1" placeholder="6.25"></div>
+                            <div class="item"><label>沾边赖4码 <span class="sub">210组x180注x140组</span></label><input type="number" id="zg3_4" data-type="g3" step="0.1" placeholder="5"></div>
+                            <div class="item"><label>沾边赖5码 <span class="sub">252组x210注x196组</span></label><input type="number" id="zg3_5" data-type="g3" step="0.1" placeholder="4.28"></div>
+                            <div class="item"><label>沾边赖6码 <span class="sub">210组x234注x182组</span></label><input type="number" id="zg3_6" data-type="g3" step="0.1" placeholder="3.84"></div>
+                            <div class="item"><label>沾边赖7码 <span class="sub">120组x252注x112组</span></label><input type="number" id="zg3_7" data-type="g3" step="0.1" placeholder="3.57"></div>
+                        </div>
+                        <div class="section">
+                            <h3>豹子</h3>
+                            <div class="item"><label>豹子全包 <span class="sub">1组x10注x1组</span></label><input type="number" id="baozi" data-type="baozi" step="0.1" placeholder="95"></div>
+                        </div>
+                    </div>
+                    <div class="sections">
+                        <div class="section">
+                            <h3>组六</h3>
+                            <div class="item"><label>组六四码 <span class="sub">210组x24注x7组</span></label><input type="number" id="g6_4" data-type="g6" step="0.1" placeholder="37"></div>
+                            <div class="item"><label>组六五码 <span class="sub">252组x60注x21组</span></label><input type="number" id="g6_5" data-type="g6" step="0.1" placeholder="15"></div>
+                            <div class="item"><label>组六六码 <span class="sub">210组x120注x35组</span></label><input type="number" id="g6_6" data-type="g6" step="0.1" placeholder="7.5"></div>
+                            <div class="item"><label>组六七码 <span class="sub">120组x210注x35组</span></label><input type="number" id="g6_7" data-type="g6" step="0.1" placeholder="4.3"></div>
+                            <div class="item"><label>组六八码 <span class="sub">45组x336注x21组</span></label><input type="number" id="g6_8" data-type="g6" step="0.1" placeholder="2.7"></div>
+                            <div class="item"><label>组六九码 <span class="sub">10组x504注x7组</span></label><input type="number" id="g6_9" data-type="g6" step="0.1" placeholder="1.8"></div>
+                            <div class="item"><label>组六全包 <span class="sub">1组x720注x1组</span></label><input type="number" id="g6_all" data-type="g6" step="0.1" placeholder="1.2"></div>
+                            <h4>沾边赖</h4>
+                            <div class="item"><label>沾边赖1码 <span class="sub">10组x216注x3组</span></label><input type="number" id="zg6_1" data-type="g6" step="0.1" placeholder="4.16"></div>
+                            <div class="item"><label>沾边赖2码 <span class="sub">45组x384注x24组</span></label><input type="number" id="zg6_2" data-type="g6" step="0.1" placeholder="2.34"></div>
+                            <div class="item"><label>沾边赖3码 <span class="sub">120组x510注x85组</span></label><input type="number" id="zg6_3" data-type="g6" step="0.1" placeholder="1.76"></div>
+                            <div class="item"><label>沾边赖4码 <span class="sub">210组x600注x175组</span></label><input type="number" id="zg6_4" data-type="g6" step="0.1" placeholder="1.5"></div>
+                            <div class="item"><label>沾边赖5码 <span class="sub">252组x660注x231组</span></label><input type="number" id="zg6_5" data-type="g6" step="0.1" placeholder="1.36"></div>
+                            <div class="item"><label>沾边赖6码 <span class="sub">210组x696注x203组</span></label><input type="number" id="zg6_6" data-type="g6" step="0.1" placeholder="1.29"></div>
+                            <div class="item"><label>沾边赖7码 <span class="sub">120组x714注x119组</span></label><input type="number" id="zg6_7" data-type="g6" step="0.1" placeholder="1.26"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-content" id="tab-span">
+                <div class="sections-wrapper" style="flex-direction:column;">
+                    <div class="sections" style="flex:1;overflow-y:auto;">
+                        <div class="section">
+                            <h3>跨度</h3>
+                            <div class="item"><label>跨度0 <span class="sub">10注</span></label><input type="number" id="span_0" data-type="span" step="0.1" value="80"></div>
+                            <div class="item"><label>跨度1 <span class="sub">54注</span></label><input type="number" id="span_1" data-type="span" step="0.1" value="16"></div>
+                            <div class="item"><label>跨度2 <span class="sub">96注</span></label><input type="number" id="span_2" data-type="span" step="0.1" value="9.3"></div>
+                            <div class="item"><label>跨度3 <span class="sub">126注</span></label><input type="number" id="span_3" data-type="span" step="0.1" value="7.2"></div>
+                            <div class="item"><label>跨度4 <span class="sub">144注</span></label><input type="number" id="span_4" data-type="span" step="0.1" value="6.3"></div>
+                            <div class="item"><label>跨度5 <span class="sub">150注</span></label><input type="number" id="span_5" data-type="span" step="0.1" value="5.8"></div>
+                            <div class="item"><label>跨度6 <span class="sub">144注</span></label><input type="number" id="span_6" data-type="span" step="0.1" value="6.3"></div>
+                            <div class="item"><label>跨度7 <span class="sub">126注</span></label><input type="number" id="span_7" data-type="span" step="0.1" value="7.2"></div>
+                            <div class="item"><label>跨度8 <span class="sub">96注</span></label><input type="number" id="span_8" data-type="span" step="0.1" value="9.3"></div>
+                            <div class="item"><label>跨度9 <span class="sub">54注</span></label><input type="number" id="span_9" data-type="span" step="0.1" value="17"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-content" id="tab-fushi">
+                <div class="sections-wrapper" style="flex-direction:column;">
+                    <div class="sections" style="flex:1;overflow-y:auto;">
+                        <div class="section">
+                            <h3>复式</h3>
+                            <div class="item"><label>复式3码 <span class="sub">120组x27注x豹子36/组三8/组六1</span></label><input type="number" id="fushi_3" data-type="fushi" step="0.1" placeholder="33"></div>
+                            <div class="item"><label>复式4码 <span class="sub">210组x64注x豹子84/组三28/组六7</span></label><input type="number" id="fushi_4" data-type="fushi" step="0.1" placeholder="14"></div>
+                            <div class="item"><label>复式5码 <span class="sub">252组x125注x豹子126/组三56/组六21</span></label><input type="number" id="fushi_5" data-type="fushi" step="0.1" placeholder="7.2"></div>
+                            <div class="item"><label>复式6码 <span class="sub">210组x216注x豹子126/组三70/组六35</span></label><input type="number" id="fushi_6" data-type="fushi" step="0.1" placeholder="4.1"></div>
+                            <div class="item"><label>复式7码 <span class="sub">120组x343注x豹子84/组三56/组六35</span></label><input type="number" id="fushi_7" data-type="fushi" step="0.1" placeholder="2.6"></div>
+                            <div class="item"><label>复式8码 <span class="sub">45组x512注x豹子36/组三28/组六21</span></label><input type="number" id="fushi_8" data-type="fushi" step="0.1" placeholder="1.7"></div>
+                            <div class="item"><label>复式9码 <span class="sub">10组x729注x豹子9/组三8/组六7</span></label><input type="number" id="fushi_9" data-type="fushi" step="0.1" placeholder="1.2"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-content" id="tab-he">
+                <div class="sections-wrapper" style="flex-direction:column;">
+                    <div class="sections" style="flex:1;overflow-y:auto;">
+                        <div class="section">
+                            <h3>和值</h3>
+                            <div class="item"><label>和值0-27 <span class="sub">1注</span></label><input type="number" id="he_0_27" data-type="he" step="0.1" value="800"></div>
+                            <div class="item"><label>和值1-26 <span class="sub">3注</span></label><input type="number" id="he_1_26" data-type="he" step="0.1" value="300"></div>
+                            <div class="item"><label>和值2-25 <span class="sub">6注</span></label><input type="number" id="he_2_25" data-type="he" step="0.1" value="150"></div>
+                            <div class="item"><label>和值3-24 <span class="sub">10注</span></label><input type="number" id="he_3_24" data-type="he" step="0.1" value="90"></div>
+                            <div class="item"><label>和值4-23 <span class="sub">15注</span></label><input type="number" id="he_4_23" data-type="he" step="0.1" value="60"></div>
+                            <div class="item"><label>和值5-22 <span class="sub">21注</span></label><input type="number" id="he_5_22" data-type="he" step="0.1" value="43"></div>
+                            <div class="item"><label>和值6-21 <span class="sub">28注</span></label><input type="number" id="he_6_21" data-type="he" step="0.1" value="32"></div>
+                            <div class="item"><label>和值7-20 <span class="sub">36注</span></label><input type="number" id="he_7_20" data-type="he" step="0.1" value="25"></div>
+                            <div class="item"><label>和值8-19 <span class="sub">45注</span></label><input type="number" id="he_8_19" data-type="he" step="0.1" value="20"></div>
+                            <div class="item"><label>和值9-18 <span class="sub">55注</span></label><input type="number" id="he_9_18" data-type="he" step="0.1" value="16"></div>
+                            <div class="item"><label>和值10-17 <span class="sub">63注</span></label><input type="number" id="he_10_17" data-type="he" step="0.1" value="14"></div>
+                            <div class="item"><label>和值11-16 <span class="sub">69注</span></label><input type="number" id="he_11_16" data-type="he" step="0.1" value="13"></div>
+                            <div class="item"><label>和值12-15 <span class="sub">73注</span></label><input type="number" id="he_12_15" data-type="he" step="0.1" value="12"></div>
+                            <div class="item"><label>和值13-14 <span class="sub">75注</span></label><input type="number" id="he_13_14" data-type="he" step="0.1" value="12"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bottom-bar">
+                <div class="rebate-row">
+                    <label>返水:</label>
+                    <input type="number" id="rebate" value="9.7" step="0.1">
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-primary btn-analyze" onclick="analyze()">分析</button>
+                    <button class="btn btn-secondary" onclick="reset()">重置</button>
+                </div>
+            </div>
+        </div>
+        <div class="right-panel" id="results">
+            <div class="empty">
+                <p>👈 每类只能填一项，三类都要填</p>
+                <p style="margin-top: 10px; font-size: 12px;">组三、组六只能各选一项，豹子必填</p>
+            </div>
+        </div>
+    </div>
+    <script>
+        function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+        function lcm(a, b) { return a * b / gcd(a, b); }
+
+        const methodDetails = {
+            'g3_2': { groups: 45, perGroup: 6, hitGroups: 1 },
+            'g3_3': { groups: 120, perGroup: 18, hitGroups: 8 },
+            'g3_4': { groups: 210, perGroup: 36, hitGroups: 28 },
+            'g3_5': { groups: 252, perGroup: 60, hitGroups: 56 },
+            'g3_6': { groups: 210, perGroup: 90, hitGroups: 70 },
+            'g3_7': { groups: 120, perGroup: 126, hitGroups: 56 },
+            'g3_8': { groups: 45, perGroup: 168, hitGroups: 28 },
+            'g3_9': { groups: 10, perGroup: 216, hitGroups: 8 },
+            'g3_all': { groups: 1, perGroup: 270, hitGroups: 1 },
+            'g6_4': { groups: 210, perGroup: 24, hitGroups: 7 },
+            'g6_5': { groups: 252, perGroup: 60, hitGroups: 21 },
+            'g6_6': { groups: 210, perGroup: 120, hitGroups: 35 },
+            'g6_7': { groups: 120, perGroup: 210, hitGroups: 35 },
+            'g6_8': { groups: 45, perGroup: 336, hitGroups: 21 },
+            'g6_9': { groups: 10, perGroup: 504, hitGroups: 7 },
+            'g6_all': { groups: 1, perGroup: 720, hitGroups: 1 },
+            'baozi': { groups: 1, perGroup: 10, hitGroups: 1 },
+            'zg3_1': { groups: 10, perGroup: 54, hitGroups: 2 },
+            'zg3_2': { groups: 45, perGroup: 102, hitGroups: 17 },
+            'zg3_3': { groups: 120, perGroup: 144, hitGroups: 64 },
+            'zg3_4': { groups: 210, perGroup: 180, hitGroups: 140 },
+            'zg3_5': { groups: 252, perGroup: 210, hitGroups: 196 },
+            'zg3_6': { groups: 210, perGroup: 234, hitGroups: 182 },
+            'zg3_7': { groups: 120, perGroup: 252, hitGroups: 112 },
+            'zg6_1': { groups: 10, perGroup: 216, hitGroups: 3 },
+            'zg6_2': { groups: 45, perGroup: 384, hitGroups: 24 },
+            'zg6_3': { groups: 120, perGroup: 510, hitGroups: 85 },
+            'zg6_4': { groups: 210, perGroup: 600, hitGroups: 175 },
+            'zg6_5': { groups: 252, perGroup: 660, hitGroups: 231 },
+            'zg6_6': { groups: 210, perGroup: 696, hitGroups: 203 },
+            'zg6_7': { groups: 120, perGroup: 714, hitGroups: 119 },
+            'span_0': { groups: 1, perGroup: 10, hitGroups: 1 },
+            'span_1': { groups: 1, perGroup: 54, hitGroups: 1 },
+            'span_2': { groups: 1, perGroup: 96, hitGroups: 1 },
+            'span_3': { groups: 1, perGroup: 126, hitGroups: 1 },
+            'span_4': { groups: 1, perGroup: 144, hitGroups: 1 },
+            'span_5': { groups: 1, perGroup: 150, hitGroups: 1 },
+            'span_6': { groups: 1, perGroup: 144, hitGroups: 1 },
+            'span_7': { groups: 1, perGroup: 126, hitGroups: 1 },
+            'span_8': { groups: 1, perGroup: 96, hitGroups: 1 },
+            'span_9': { groups: 1, perGroup: 54, hitGroups: 1 },
+            'fushi_3': { groups: 120, perGroup: 27, hitBaozi: 36, hitG3: 8, hitG6: 1 },
+            'fushi_4': { groups: 210, perGroup: 64, hitBaozi: 84, hitG3: 28, hitG6: 7 },
+            'fushi_5': { groups: 252, perGroup: 125, hitBaozi: 126, hitG3: 56, hitG6: 21 },
+            'fushi_6': { groups: 210, perGroup: 216, hitBaozi: 126, hitG3: 70, hitG6: 35 },
+            'fushi_7': { groups: 120, perGroup: 343, hitBaozi: 84, hitG3: 56, hitG6: 35 },
+            'fushi_8': { groups: 45, perGroup: 512, hitBaozi: 36, hitG3: 28, hitG6: 21 },
+            'fushi_9': { groups: 10, perGroup: 729, hitBaozi: 9, hitG3: 8, hitG6: 7 },
+            'he_0_27': { groups: 1, perGroup: 1, hitGroups: 1 },
+            'he_1_26': { groups: 1, perGroup: 3, hitGroups: 1 },
+            'he_2_25': { groups: 1, perGroup: 6, hitGroups: 1 },
+            'he_3_24': { groups: 1, perGroup: 10, hitGroups: 1 },
+            'he_4_23': { groups: 1, perGroup: 15, hitGroups: 1 },
+            'he_5_22': { groups: 1, perGroup: 21, hitGroups: 1 },
+            'he_6_21': { groups: 1, perGroup: 28, hitGroups: 1 },
+            'he_7_20': { groups: 1, perGroup: 36, hitGroups: 1 },
+            'he_8_19': { groups: 1, perGroup: 45, hitGroups: 1 },
+            'he_9_18': { groups: 1, perGroup: 55, hitGroups: 1 },
+            'he_10_17': { groups: 1, perGroup: 63, hitGroups: 1 },
+            'he_11_16': { groups: 1, perGroup: 69, hitGroups: 1 },
+            'he_12_15': { groups: 1, perGroup: 73, hitGroups: 1 },
+            'he_13_14': { groups: 1, perGroup: 75, hitGroups: 1 }
+        };
+
+        const methods = [
+            { code: 'g3_2', name: '组三两码', type: 'g3' },
+            { code: 'g3_3', name: '组三三码', type: 'g3' },
+            { code: 'g3_4', name: '组三四码', type: 'g3' },
+            { code: 'g3_5', name: '组三五码', type: 'g3' },
+            { code: 'g3_6', name: '组三六码', type: 'g3' },
+            { code: 'g3_7', name: '组三七码', type: 'g3' },
+            { code: 'g3_8', name: '组三八码', type: 'g3' },
+            { code: 'g3_9', name: '组三九码', type: 'g3' },
+            { code: 'g3_all', name: '组三全包', type: 'g3' },
+            { code: 'zg3_1', name: '沾边赖组三1码', type: 'g3' },
+            { code: 'zg3_2', name: '沾边赖组三2码', type: 'g3' },
+            { code: 'zg3_3', name: '沾边赖组三3码', type: 'g3' },
+            { code: 'zg3_4', name: '沾边赖组三4码', type: 'g3' },
+            { code: 'zg3_5', name: '沾边赖组三5码', type: 'g3' },
+            { code: 'zg3_6', name: '沾边赖组三6码', type: 'g3' },
+            { code: 'zg3_7', name: '沾边赖组三7码', type: 'g3' },
+            { code: 'g6_4', name: '组六四码', type: 'g6' },
+            { code: 'g6_5', name: '组六五码', type: 'g6' },
+            { code: 'g6_6', name: '组六六码', type: 'g6' },
+            { code: 'g6_7', name: '组六七码', type: 'g6' },
+            { code: 'g6_8', name: '组六八码', type: 'g6' },
+            { code: 'g6_9', name: '组六九码', type: 'g6' },
+            { code: 'g6_all', name: '组六全包', type: 'g6' },
+            { code: 'zg6_1', name: '沾边赖组六1码', type: 'g6' },
+            { code: 'zg6_2', name: '沾边赖组六2码', type: 'g6' },
+            { code: 'zg6_3', name: '沾边赖组六3码', type: 'g6' },
+            { code: 'zg6_4', name: '沾边赖组六4码', type: 'g6' },
+            { code: 'zg6_5', name: '沾边赖组六5码', type: 'g6' },
+            { code: 'zg6_6', name: '沾边赖组六6码', type: 'g6' },
+            { code: 'zg6_7', name: '沾边赖组六7码', type: 'g6' },
+            { code: 'baozi', name: '豹子全包', type: 'baozi' },
+            { code: 'fushi_3', name: '复式3码', type: 'fushi' },
+            { code: 'fushi_4', name: '复式4码', type: 'fushi' },
+            { code: 'fushi_5', name: '复式5码', type: 'fushi' },
+            { code: 'fushi_6', name: '复式6码', type: 'fushi' },
+            { code: 'fushi_7', name: '复式7码', type: 'fushi' },
+            { code: 'fushi_8', name: '复式8码', type: 'fushi' },
+            { code: 'fushi_9', name: '复式9码', type: 'fushi' },
+            { code: 'span_0', name: '跨度0', type: 'span' },
+            { code: 'span_1', name: '跨度1', type: 'span' },
+            { code: 'span_2', name: '跨度2', type: 'span' },
+            { code: 'span_3', name: '跨度3', type: 'span' },
+            { code: 'span_4', name: '跨度4', type: 'span' },
+            { code: 'span_5', name: '跨度5', type: 'span' },
+            { code: 'span_6', name: '跨度6', type: 'span' },
+            { code: 'span_7', name: '跨度7', type: 'span' },
+            { code: 'span_8', name: '跨度8', type: 'span' },
+            { code: 'span_9', name: '跨度9', type: 'span' },
+            { code: 'he_0_27', name: '和值0-27', type: 'he' },
+            { code: 'he_1_26', name: '和值1-26', type: 'he' },
+            { code: 'he_2_25', name: '和值2-25', type: 'he' },
+            { code: 'he_3_24', name: '和值3-24', type: 'he' },
+            { code: 'he_4_23', name: '和值4-23', type: 'he' },
+            { code: 'he_5_22', name: '和值5-22', type: 'he' },
+            { code: 'he_6_21', name: '和值6-21', type: 'he' },
+            { code: 'he_7_20', name: '和值7-20', type: 'he' },
+            { code: 'he_8_19', name: '和值8-19', type: 'he' },
+            { code: 'he_9_18', name: '和值9-18', type: 'he' },
+            { code: 'he_10_17', name: '和值10-17', type: 'he' },
+            { code: 'he_11_16', name: '和值11-16', type: 'he' },
+            { code: 'he_12_15', name: '和值12-15', type: 'he' },
+            { code: 'he_13_14', name: '和值13-14', type: 'he' }
+        ];
+
+        function switchTab(tab, e) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+            (e || event).target.classList.add('active');
+            const results = document.getElementById('results');
+            if (tab === 'span' || tab === 'he') {
+                results.innerHTML = '<div class="empty"><p>👈 全填才能计算</p><p style="margin-top:10px;font-size:12px;">与组选互不相干</p></div>';
+            } else if (tab === 'fushi') {
+                results.innerHTML = '<div class="empty"><p>👈 请填入复式玩法赔率</p><p style="margin-top:10px;font-size:12px;">与组选/跨度/和值互不相干</p></div>';
+            } else {
+                results.innerHTML = '<div class="empty"><p>👈 每类只能填一项，三类都要填</p><p style="margin-top:10px;font-size:12px;">组三、组六只能各选一项，豹子必填</p></div>';
+            }
+        }
+
+        document.querySelectorAll('input[data-type]').forEach(input => {
+            input.addEventListener('focus', function() {
+                const type = this.dataset.type;
+                if (type === 'span' || type === 'he' || type === 'fushi') return;
+                document.querySelectorAll('input[data-type="' + type + '"]').forEach(other => {
+                    if (other !== this) other.value = '';
+                });
+            });
+            input.addEventListener('input', function() {
+                const type = this.dataset.type;
+                if (type === 'span' || type === 'he' || type === 'fushi') return;
+                if (this.value) {
+                    this.classList.add('active');
+                    document.querySelectorAll('input[data-type="' + type + '"]').forEach(other => {
+                        if (other !== this) other.classList.remove('active');
+                    });
+                } else {
+                    this.classList.remove('active');
+                }
+            });
+        });
+
+        function getOdds() {
+            const activeTab = document.querySelector('.tab-content.active').id;
+            let typeFilter;
+            if (activeTab === 'tab-group') typeFilter = ['g3', 'g6', 'baozi'];
+            else if (activeTab === 'tab-fushi') typeFilter = ['fushi'];
+            else if (activeTab === 'tab-span') typeFilter = ['span'];
+            else if (activeTab === 'tab-he') typeFilter = ['he'];
+            else typeFilter = null;
+            const odds = {};
+            methods.forEach(m => {
+                if (typeFilter && !typeFilter.includes(m.type)) return;
+                const val = parseFloat(document.getElementById(m.code).value);
+                if (!isNaN(val) && val > 0) odds[m.code] = val;
+            });
+            return odds;
+        }
+
+        function calculate(multiples, odds, rebateRate) {
+            const totalCost = methods.reduce((sum, m) => {
+                const mult = multiples[m.code] || 0;
+                const detail = methodDetails[m.code];
+                return sum + detail.groups * detail.perGroup * mult;
+            }, 0);
+            const rebate = totalCost * rebateRate;
+            const realCost = totalCost - rebate;
+            let g3Win = 0, g6Win = 0, bWin = 0;
+            methods.forEach(m => {
+                if (odds[m.code] && multiples[m.code]) {
+                    const mult = multiples[m.code];
+                    const detail = methodDetails[m.code];
+                    const win = detail.hitGroups * detail.perGroup * mult * odds[m.code];
+                    if (m.type === 'g3') g3Win += win;
+                    else if (m.type === 'g6') g6Win += win;
+                    else if (m.type === 'baozi') bWin += win;
+                }
+            });
+            return {
+                totalCost, rebate, realCost, g3Win, g6Win, bWin,
+                g3Profit: g3Win - realCost, g6Profit: g6Win - realCost, bProfit: bWin - realCost,
+                minProfit: Math.min(g3Win - realCost, g6Win - realCost, bWin - realCost),
+                isSureWin: g3Win >= realCost && g6Win >= realCost && bWin >= realCost
+            };
+        }
+
+        function findBalancedPlan(odds, rebateRate) {
+            const activeMethods = methods.filter(m => odds[m.code]);
+            if (activeMethods.length < 2) return null;
+            let lcmHit = 1;
+            activeMethods.forEach(m => { lcmHit = lcm(lcmHit, methodDetails[m.code].hitGroups); });
+            for (let effectiveMult = lcmHit; effectiveMult <= lcmHit * 100; effectiveMult += lcmHit) {
+                let totalCost = 0;
+                const costs = {}, timesMap = {};
+                const wins = { g3: 0, g6: 0, baozi: 0 };
+                const profits = { g3: 0, g6: 0, baozi: 0 };
+                let hasG3 = false, hasG6 = false, hasBaozi = false;
+                activeMethods.forEach(m => {
+                    const detail = methodDetails[m.code];
+                    const times = effectiveMult / detail.hitGroups;
+                    timesMap[m.code] = times;
+                    const cost = detail.groups * detail.perGroup * times;
+                    costs[m.code] = cost;
+                    totalCost += cost;
+                    const win = detail.hitGroups * detail.perGroup * times * odds[m.code];
+                    if (m.type === 'g3') { wins.g3 += win; hasG3 = true; }
+                    else if (m.type === 'g6') { wins.g6 += win; hasG6 = true; }
+                    else if (m.type === 'baozi') { wins.baozi += win; hasBaozi = true; }
+                });
+                const rebate = totalCost * rebateRate;
+                const realCost = totalCost - rebate;
+                if (hasG3) profits.g3 = wins.g3 - realCost;
+                if (hasG6) profits.g6 = wins.g6 - realCost;
+                if (hasBaozi) profits.baozi = wins.baozi - realCost;
+                if ((!hasG3 || profits.g3 > 0) && (!hasG6 || profits.g6 > 0) && (!hasBaozi || profits.baozi > 0)) {
+                    return {
+                        type: 'balanced', effectiveMult, timesMap, costs, wins, profits,
+                        totalCost, rebate, realCost,
+                        minProfit: Math.min(hasG3 ? profits.g3 : Infinity, hasG6 ? profits.g6 : Infinity, hasBaozi ? profits.baozi : Infinity),
+                        roi: Math.min(hasG3 ? profits.g3 : Infinity, hasG6 ? profits.g6 : Infinity, hasBaozi ? profits.baozi : Infinity) / realCost * 100,
+                        hasG3, hasG6, hasBaozi, activeMethods
+                    };
+                }
+            }
+            return null;
+        }
+
+        function findOptimalPlan(odds, rebateRate) {
+            const activeMethods = methods.filter(m => odds[m.code]);
+            if (activeMethods.length < 2) return null;
+            const effectiveMults = activeMethods.map(m => methodDetails[m.code].hitGroups);
+            let lcmEM = 1;
+            effectiveMults.forEach(em => { lcmEM = lcm(lcmEM, em); });
+            let bestResult = null;
+            for (let k = 1; k <= 200; k++) {
+                const effectiveMult = lcmEM * k;
+                const multiples = {};
+                activeMethods.forEach(m => { multiples[m.code] = effectiveMult / methodDetails[m.code].hitGroups; });
+                const r = calculate(multiples, odds, rebateRate);
+                if (r.isSureWin) {
+                    r.multiples = multiples; r.roi = r.minProfit / r.realCost * 100;
+                    r.effectiveMult = effectiveMult; r.lcmEM = lcmEM; r.k = k;
+                    if (!bestResult || r.totalCost < bestResult.totalCost) bestResult = r;
+                    if (k > 10 && bestResult && r.totalCost > bestResult.totalCost * 1.5) break;
+                }
+            }
+            return bestResult;
+        }
+
+        function findSureWin(odds, rebateRate) {
+            const results = [];
+            const active = methods.filter(m => odds[m.code]);
+            if (active.length < 2) return results;
+            const codes = active.map(m => m.code);
+            const maxM = 50;
+            function* gen(cur, idx) {
+                if (idx === codes.length) { yield { ...cur }; return; }
+                for (let i = 1; i <= maxM; i++) { cur[codes[idx]] = i; yield* gen(cur, idx + 1); }
+            }
+            for (const multiples of gen({}, 0)) {
+                const r = calculate(multiples, odds, rebateRate);
+                if (r.isSureWin) { r.multiples = multiples; r.roi = r.minProfit / r.realCost * 100; results.push(r); }
+            }
+            results.sort((a, b) => b.minProfit - a.minProfit);
+            return results.slice(0, 10);
+        }
+
+        function analyze() {
+            const odds = getOdds();
+            const rebateRate = (parseFloat(document.getElementById('rebate').value) || 0) / 100;
+            const activeTab = document.querySelector('.tab-content.active').id;
+            if (activeTab === 'tab-fushi') { analyzeFushi(odds, rebateRate); return; }
+            if (activeTab === 'tab-span') { analyzeSpan(odds, rebateRate); return; }
+            if (activeTab === 'tab-he') { analyzeHe(odds, rebateRate); return; }
+            const g3Odds = Object.keys(odds).filter(code => methods.find(m => m.code === code && m.type === 'g3'));
+            const g6Odds = Object.keys(odds).filter(code => methods.find(m => m.code === code && m.type === 'g6'));
+            const baoziOdds = Object.keys(odds).filter(code => methods.find(m => m.code === code && m.type === 'baozi'));
+            if (g3Odds.length === 0) { alert('组三必须填一项'); return; }
+            if (g6Odds.length === 0) { alert('组六必须填一项'); return; }
+            if (baoziOdds.length === 0) { alert('豹子必须填一项'); return; }
+            if (g3Odds.length > 1) { alert('组三只能填一项'); return; }
+            if (g6Odds.length > 1) { alert('组六只能填一项'); return; }
+            if (baoziOdds.length > 1) { alert('豹子只能填一项'); return; }
+            const balanced = findBalancedPlan(odds, rebateRate);
+            const container = document.getElementById('results');
+            if (!balanced) {
+                // 无必赢方案，显示盈亏分析
+                let lcmHit = 1;
+                const activeMethods = methods.filter(m => odds[m.code]);
+                activeMethods.forEach(m => { lcmHit = lcm(lcmHit, methodDetails[m.code].hitGroups); });
+                const effectiveMult = lcmHit;
+                let totalCost = 0;
+                const timesMap = {}, wins = { g3: 0, g6: 0, baozi: 0 };
+                activeMethods.forEach(m => {
+                    const detail = methodDetails[m.code];
+                    const times = effectiveMult / detail.hitGroups;
+                    timesMap[m.code] = times;
+                    totalCost += detail.groups * detail.perGroup * times;
+                    if (m.type === 'g3') wins.g3 += detail.hitGroups * detail.perGroup * times * odds[m.code];
+                    else if (m.type === 'g6') wins.g6 += detail.hitGroups * detail.perGroup * times * odds[m.code];
+                    else if (m.type === 'baozi') wins.baozi += detail.hitGroups * detail.perGroup * times * odds[m.code];
+                });
+                const rebate = totalCost * rebateRate;
+                const realCost = totalCost - rebate;
+                const g3Profit = wins.g3 - realCost, g6Profit = wins.g6 - realCost, bProfit = wins.baozi - realCost;
+                const expWin = 0.27 * wins.g3 + 0.72 * wins.g6 + 0.01 * wins.baozi;
+                const expProfit = expWin - realCost;
+                let costDetails = '';
+                activeMethods.forEach(m => {
+                    const detail = methodDetails[m.code];
+                    const typeName = m.type === 'g3' ? '组三' : m.type === 'g6' ? '组六' : '豹子';
+                    costDetails += '<div class="cost-item"><strong>' + m.name + '</strong>: ' + detail.groups + '组x' + detail.perGroup + '注x' + timesMap[m.code] + '倍</div>';
+                });
+                container.innerHTML = '<div class="result-box"><h3>❌ 无必赢组合</h3><p>当前赔率下无法保证三种情况都盈利</p><hr style="margin:10px 0;border:none;border-top:1px solid #eee;">' + costDetails + '<hr style="margin:10px 0;border:none;border-top:1px solid #eee;"><div><strong>总成本:</strong> ' + totalCost.toFixed(2) + ' 元 | <strong>返水:</strong> ' + rebate.toFixed(2) + ' 元 | <strong>实际成本:</strong> ' + realCost.toFixed(2) + ' 元</div><hr style="margin:10px 0;border:none;border-top:1px solid #eee;"><div style="background:#f8f9fa;padding:8px;border-radius:4px;margin:6px 0;font-size:12px;"><strong>组三:</strong> 拿回' + wins.g3.toFixed(2) + ' - 成本' + realCost.toFixed(2) + ' = <span style="color:' + (g3Profit >= 0 ? '#27ae60' : '#e74c3c') + '">' + (g3Profit >= 0 ? '+' : '') + g3Profit.toFixed(2) + '元</span></div><div style="background:#f8f9fa;padding:8px;border-radius:4px;margin:6px 0;font-size:12px;"><strong>组六:</strong> 拿回' + wins.g6.toFixed(2) + ' - 成本' + realCost.toFixed(2) + ' = <span style="color:' + (g6Profit >= 0 ? '#27ae60' : '#e74c3c') + '">' + (g6Profit >= 0 ? '+' : '') + g6Profit.toFixed(2) + '元</span></div><div style="background:#f8f9fa;padding:8px;border-radius:4px;margin:6px 0;font-size:12px;"><strong>豹子:</strong> 拿回' + wins.baozi.toFixed(2) + ' - 成本' + realCost.toFixed(2) + ' = <span style="color:' + (bProfit >= 0 ? '#27ae60' : '#e74c3c') + '">' + (bProfit >= 0 ? '+' : '') + bProfit.toFixed(2) + '元</span></div></div><div class="result-box"><h3>📈 概率期望分析</h3><div style="background:#e8f4fc;padding:10px;border-radius:4px;margin-bottom:10px;"><strong>期望收益:</strong> <span style="color:' + (expProfit >= 0 ? '#27ae60' : '#e74c3c') + ';font-size:16px;font-weight:bold;">' + (expProfit >= 0 ? '+' : '') + expProfit.toFixed(2) + ' 元</span> | 期望收益率: ' + (expProfit / realCost * 100).toFixed(2) + '%</div><div style="font-size:11px;color:#888;margin-bottom:10px;">期望收益 = 组三(27%)×拿回 + 组六(72%)×拿回 + 豹子(1%)×拿回 - 实际成本<br>长期平均结果，有波动风险</div><div style="background:#f8f9fa;padding:6px;margin:4px 0;font-size:12px;"><strong>组三(27%):</strong> 概率27.0% | 拿回' + wins.g3.toFixed(2) + ' | 期望贡献' + (0.27 * wins.g3).toFixed(2) + ' | 盈亏<span style="color:' + (g3Profit >= 0 ? '#27ae60' : '#e74c3c') + '">' + (g3Profit >= 0 ? '+' : '') + g3Profit.toFixed(2) + '</span></div><div style="background:#f8f9fa;padding:6px;margin:4px 0;font-size:12px;"><strong>组六(72%):</strong> 概率72.0% | 拿回' + wins.g6.toFixed(2) + ' | 期望贡献' + (0.72 * wins.g6).toFixed(2) + ' | 盈亏<span style="color:' + (g6Profit >= 0 ? '#27ae60' : '#e74c3c') + '">' + (g6Profit >= 0 ? '+' : '') + g6Profit.toFixed(2) + '</span></div><div style="background:#f8f9fa;padding:6px;margin:4px 0;font-size:12px;"><strong>豹子(1%):</strong> 概率1.0% | 拿回' + wins.baozi.toFixed(2) + ' | 期望贡献' + (0.01 * wins.baozi).toFixed(2) + ' | 盈亏<span style="color:' + (bProfit >= 0 ? '#27ae60' : '#e74c3c') + '">' + (bProfit >= 0 ? '+' : '') + bProfit.toFixed(2) + '</span></div></div>';
+                return;
+            }
+            let costDetails = '', winDetails = '';
+            balanced.activeMethods.forEach(m => {
+                const detail = methodDetails[m.code];
+                const typeName = m.type === 'g3' ? '组三' : m.type === 'g6' ? '组六' : '豹子';
+                costDetails += '<div class="cost-item"><strong>' + m.name + '</strong>: ' + detail.groups + '组x' + detail.perGroup + '注x' + balanced.timesMap[m.code] + '倍</div>';
+                winDetails += '<div style="background:#f8f9fa;padding:8px;border-radius:4px;margin:6px 0;font-size:12px;"><strong>' + typeName + ':</strong> 拿回' + balanced.wins[m.type].toFixed(2) + ' - 成本' + balanced.realCost.toFixed(2) + ' = +' + balanced.profits[m.type].toFixed(2) + '元</div>';
+            });
+            const expWin = 0.27 * balanced.wins.g3 + 0.72 * balanced.wins.g6 + 0.01 * balanced.wins.baozi;
+            const expProfit = expWin - balanced.realCost;
+            container.innerHTML = '<div class="summary" style="background:linear-gradient(135deg,#3498db,#2980b9);"><h2>⚖️ 均衡方案</h2><div class="big">+' + balanced.minProfit.toFixed(2) + ' 元</div><div>最低收益 | 收益率: ' + balanced.roi.toFixed(2) + '%</div></div><div class="result-box"><h3>📊 均衡方案详情</h3>' + costDetails + '<hr style="margin:15px 0;border:none;border-top:1px solid #eee;"><div><strong>总成本:</strong> ' + balanced.totalCost.toFixed(2) + ' 元 | <strong>返水:</strong> ' + balanced.rebate.toFixed(2) + ' 元 | <strong>实际成本:</strong> ' + balanced.realCost.toFixed(2) + ' 元</div><hr style="margin:15px 0;border:none;border-top:1px solid #eee;">' + winDetails + '</div><div class="result-box"><h3>📈 概率期望分析</h3><div style="background:#e8f4fc;padding:10px;border-radius:4px;margin-bottom:10px;"><strong>期望收益:</strong> <span style="color:' + (expProfit >= 0 ? '#27ae60' : '#e74c3c') + ';font-size:16px;font-weight:bold;">' + (expProfit >= 0 ? '+' : '') + expProfit.toFixed(2) + ' 元</span> | 期望收益率: ' + (expProfit / balanced.realCost * 100).toFixed(2) + '%</div><div style="font-size:11px;color:#888;margin-bottom:10px;">期望收益 = 组三(27%)×拿回 + 组六(72%)×拿回 + 豹子(1%)×拿回 - 实际成本<br>长期平均结果，有波动风险</div><div style="background:#f8f9fa;padding:6px;margin:4px 0;font-size:12px;"><strong>组三(27%):</strong> 概率27.0% | 拿回' + balanced.wins.g3.toFixed(2) + ' | 期望贡献' + (0.27 * balanced.wins.g3).toFixed(2) + ' | 盈亏<span style="color:' + (balanced.profits.g3 >= 0 ? '#27ae60' : '#e74c3c') + '">' + (balanced.profits.g3 >= 0 ? '+' : '') + balanced.profits.g3.toFixed(2) + '</span></div><div style="background:#f8f9fa;padding:6px;margin:4px 0;font-size:12px;"><strong>组六(72%):</strong> 概率72.0% | 拿回' + balanced.wins.g6.toFixed(2) + ' | 期望贡献' + (0.72 * balanced.wins.g6).toFixed(2) + ' | 盈亏<span style="color:' + (balanced.profits.g6 >= 0 ? '#27ae60' : '#e74c3c') + '">' + (balanced.profits.g6 >= 0 ? '+' : '') + balanced.profits.g6.toFixed(2) + '</span></div><div style="background:#f8f9fa;padding:6px;margin:4px 0;font-size:12px;"><strong>豹子(1%):</strong> 概率1.0% | 拿回' + balanced.wins.baozi.toFixed(2) + ' | 期望贡献' + (0.01 * balanced.wins.baozi).toFixed(2) + ' | 盈亏<span style="color:' + (balanced.profits.baozi >= 0 ? '#27ae60' : '#e74c3c') + '">' + (balanced.profits.baozi >= 0 ? '+' : '') + balanced.profits.baozi.toFixed(2) + '</span></div></div>';
+        }
+
+        function analyzeFushi(odds, rebateRate) {
+            const fushiOdds = Object.keys(odds).filter(code => code.startsWith('fushi_'));
+            if (fushiOdds.length < 1) { alert('请至少填入1个复式玩法的赔率'); return; }
+            const activeMethods = methods.filter(m => odds[m.code] && m.type === 'fushi');
+            let bestResult = null, lastEffectiveMult = 0;
+            let lcmHit = 1;
+            activeMethods.forEach(m => { lcmHit = lcm(lcmHit, Math.min(methodDetails[m.code].hitBaozi, methodDetails[m.code].hitG3, methodDetails[m.code].hitG6)); });
+            for (let effectiveMult = lcmHit; effectiveMult <= lcmHit * 100; effectiveMult += lcmHit) {
+                lastEffectiveMult = effectiveMult;
+                let totalCost = 0;
+                const costs = {}, timesMap = {};
+                const wins = { baozi: 0, g3: 0, g6: 0 };
+                activeMethods.forEach(m => {
+                    const detail = methodDetails[m.code];
+                    const minHit = Math.min(detail.hitBaozi, detail.hitG3, detail.hitG6);
+                    const times = effectiveMult / minHit;
+                    timesMap[m.code] = times;
+                    const cost = detail.groups * detail.perGroup * times;
+                    costs[m.code] = cost;
+                    totalCost += cost;
+                    wins.baozi += detail.hitBaozi * detail.perGroup * times * odds[m.code];
+                    wins.g3 += detail.hitG3 * detail.perGroup * times * odds[m.code];
+                    wins.g6 += detail.hitG6 * detail.perGroup * times * odds[m.code];
+                });
+                const rebate = totalCost * rebateRate;
+                const realCost = totalCost - rebate;
+                const bp = wins.baozi - realCost, gp = wins.g3 - realCost, gp6 = wins.g6 - realCost;
+                if (bp >= 0 && gp >= 0 && gp6 >= 0) {
+                    bestResult = { effectiveMult, timesMap, costs, wins, totalCost, rebate, realCost, baoziProfit: bp, g3Profit: gp, g6Profit: gp6, minProfit: Math.min(bp, gp, gp6), roi: Math.min(bp, gp, gp6) / realCost * 100, activeMethods };
+                    break;
+                }
+            }
+            const container = document.getElementById('results');
+            if (!bestResult) {
+                let totalCost = 0, costs = {}, timesMap = {}, wins = { baozi: 0, g3: 0, g6: 0 };
+                activeMethods.forEach(m => {
+                    const detail = methodDetails[m.code];
+                    const minHit = Math.min(detail.hitBaozi, detail.hitG3, detail.hitG6);
+                    const times = lastEffectiveMult / minHit;
+                    timesMap[m.code] = times;
+                    const cost = detail.groups * detail.perGroup * times;
+                    costs[m.code] = cost;
+                    totalCost += cost;
+                    wins.baozi += detail.hitBaozi * detail.perGroup * times * odds[m.code];
+                    wins.g3 += detail.hitG3 * detail.perGroup * times * odds[m.code];
+                    wins.g6 += detail.hitG6 * detail.perGroup * times * odds[m.code];
+                });
+                const rebate = totalCost * rebateRate;
+                const realCost = totalCost - rebate;
+                const bp = wins.baozi - realCost, gp = wins.g3 - realCost, gp6 = wins.g6 - realCost;
+                let costDetails = '';
+                activeMethods.forEach(m => { costDetails += '<div class="cost-item"><strong>' + m.name + '</strong>: ' + methodDetails[m.code].groups + '组x' + methodDetails[m.code].perGroup + '注x' + timesMap[m.code].toFixed(2) + '倍</div>'; });
+                const expWin = 0.01 * wins.baozi + 0.27 * wins.g3 + 0.72 * wins.g6;
+                const expProfit = expWin - realCost;
+                container.innerHTML = '<div class="result-box"><h3>❌ 无必赢组合</h3><p>当前赔率下无法保证三种情况都盈利</p><hr style="margin:10px 0;border:none;border-top:1px solid #eee;">' + costDetails + '<hr style="margin:10px 0;border:none;border-top:1px solid #eee;"><div><strong>总成本:</strong> ' + totalCost.toFixed(2) + ' 元 | <strong>返水:</strong> ' + rebate.toFixed(2) + ' 元 | <strong>实际成本:</strong> ' + realCost.toFixed(2) + ' 元</div><hr style="margin:10px 0;border:none;border-top:1px solid #eee;"><div style="background:#f8f9fa;padding:8px;border-radius:4px;margin:6px 0;font-size:12px;"><strong>豹子:</strong> 拿回' + wins.baozi.toFixed(2) + ' - 成本' + realCost.toFixed(2) + ' = <span style="color:' + (bp >= 0 ? '#27ae60' : '#e74c3c') + '">' + (bp >= 0 ? '+' : '') + bp.toFixed(2) + '元</span></div><div style="background:#f8f9fa;padding:8px;border-radius:4px;margin:6px 0;font-size:12px;"><strong>组三:</strong> 拿回' + wins.g3.toFixed(2) + ' - 成本' + realCost.toFixed(2) + ' = <span style="color:' + (gp >= 0 ? '#27ae60' : '#e74c3c') + '">' + (gp >= 0 ? '+' : '') + gp.toFixed(2) + '元</span></div><div style="background:#f8f9fa;padding:8px;border-radius:4px;margin:6px 0;font-size:12px;"><strong>组六:</strong> 拿回' + wins.g6.toFixed(2) + ' - 成本' + realCost.toFixed(2) + ' = <span style="color:' + (gp6 >= 0 ? '#27ae60' : '#e74c3c') + '">' + (gp6 >= 0 ? '+' : '') + gp6.toFixed(2) + '元</span></div></div><div class="result-box"><h3>📈 概率期望分析</h3><div style="background:#e8f4fc;padding:10px;border-radius:4px;margin-bottom:10px;"><strong>期望收益:</strong> <span style="color:' + (expProfit >= 0 ? '#27ae60' : '#e74c3c') + ';font-size:16px;font-weight:bold;">' + (expProfit >= 0 ? '+' : '') + expProfit.toFixed(2) + ' 元</span> | 期望收益率: ' + (expProfit / realCost * 100).toFixed(2) + '%</div><div style="font-size:11px;color:#888;margin-bottom:10px;">期望收益 = 豹子(1%)×拿回 + 组三(27%)×拿回 + 组六(72%)×拿回 - 实际成本<br>长期平均结果，有波动风险</div><div style="background:#f8f9fa;padding:6px;margin:4px 0;font-size:12px;"><strong>豹子(1%):</strong> 概率1.0% | 拿回' + wins.baozi.toFixed(2) + ' | 期望贡献' + (0.01 * wins.baozi).toFixed(2) + ' | 盈亏<span style="color:' + (bp >= 0 ? '#27ae60' : '#e74c3c') + '">' + (bp >= 0 ? '+' : '') + bp.toFixed(2) + '</span></div><div style="background:#f8f9fa;padding:6px;margin:4px 0;font-size:12px;"><strong>组三(27%):</strong> 概率27.0% | 拿回' + wins.g3.toFixed(2) + ' | 期望贡献' + (0.27 * wins.g3).toFixed(2) + ' | 盈亏<span style="color:' + (gp >= 0 ? '#27ae60' : '#e74c3c') + '">' + (gp >= 0 ? '+' : '') + gp.toFixed(2) + '</span></div><div style="background:#f8f9fa;padding:6px;margin:4px 0;font-size:12px;"><strong>组六(72%):</strong> 概率72.0% | 拿回' + wins.g6.toFixed(2) + ' | 期望贡献' + (0.72 * wins.g6).toFixed(2) + ' | 盈亏<span style="color:' + (gp6 >= 0 ? '#27ae60' : '#e74c3c') + '">' + (gp6 >= 0 ? '+' : '') + gp6.toFixed(2) + '</span></div></div>';
+                return;
+            }
+            let costDetails = '';
+            activeMethods.forEach(m => { costDetails += '<div class="cost-item"><strong>' + m.name + '</strong>: ' + methodDetails[m.code].groups + '组x' + methodDetails[m.code].perGroup + '注x' + bestResult.timesMap[m.code].toFixed(2) + '倍</div>'; });
+            const expWin = 0.01 * bestResult.wins.baozi + 0.27 * bestResult.wins.g3 + 0.72 * bestResult.wins.g6;
+            const expProfit = expWin - bestResult.realCost;
+            container.innerHTML = '<div class="summary" style="background:linear-gradient(135deg,#3498db,#2980b9);"><h2>⚖️ 复式均衡方案</h2><div class="big">+' + bestResult.minProfit.toFixed(2) + ' 元</div><div>最低收益 | 收益率: ' + bestResult.roi.toFixed(2) + '%</div></div><div class="result-box"><h3>📊 复式方案详情</h3>' + costDetails + '<hr style="margin:15px 0;border:none;border-top:1px solid #eee;"><div><strong>总成本:</strong> ' + bestResult.totalCost.toFixed(2) + ' 元 | <strong>返水:</strong> ' + bestResult.rebate.toFixed(2) + ' 元 | <strong>实际成本:</strong> ' + bestResult.realCost.toFixed(2) + ' 元</div><hr style="margin:15px 0;border:none;border-top:1px solid #eee;"><div style="background:#f8f9fa;padding:8px;border-radius:4px;margin:6px 0;font-size:12px;"><strong>豹子:</strong> 拿回' + bestResult.wins.baozi.toFixed(2) + ' - 成本' + bestResult.realCost.toFixed(2) + ' = +' + bestResult.baoziProfit.toFixed(2) + '元</div><div style="background:#f8f9fa;padding:8px;border-radius:4px;margin:6px 0;font-size:12px;"><strong>组三:</strong> 拿回' + bestResult.wins.g3.toFixed(2) + ' - 成本' + bestResult.realCost.toFixed(2) + ' = +' + bestResult.g3Profit.toFixed(2) + '元</div><div style="background:#f8f9fa;padding:8px;border-radius:4px;margin:6px 0;font-size:12px;"><strong>组六:</strong> 拿回' + bestResult.wins.g6.toFixed(2) + ' - 成本' + bestResult.realCost.toFixed(2) + ' = +' + bestResult.g6Profit.toFixed(2) + '元</div></div><div class="result-box"><h3>📈 概率期望分析</h3><div style="background:#e8f4fc;padding:10px;border-radius:4px;margin-bottom:10px;"><strong>期望收益:</strong> <span style="color:' + (expProfit >= 0 ? '#27ae60' : '#e74c3c') + ';font-size:16px;font-weight:bold;">' + (expProfit >= 0 ? '+' : '') + expProfit.toFixed(2) + ' 元</span> | 期望收益率: ' + (expProfit / bestResult.realCost * 100).toFixed(2) + '%</div><div style="font-size:11px;color:#888;margin-bottom:10px;">期望收益 = 豹子(1%)×' + bestResult.wins.baozi.toFixed(2) + ' + 组三(27%)×' + bestResult.wins.g3.toFixed(2) + ' + 组六(72%)×' + bestResult.wins.g6.toFixed(2) + ' - 实际成本<br>长期平均结果，有波动风险</div><div style="background:#f8f9fa;padding:6px;margin:4px 0;font-size:12px;"><strong>豹子(1%):</strong> 概率1.0% | 拿回' + bestResult.wins.baozi.toFixed(2) + ' | 期望贡献' + (0.01 * bestResult.wins.baozi).toFixed(2) + ' | 盈亏<span style="color:' + (bestResult.baoziProfit >= 0 ? '#27ae60' : '#e74c3c') + '">' + (bestResult.baoziProfit >= 0 ? '+' : '') + bestResult.baoziProfit.toFixed(2) + '</span></div><div style="background:#f8f9fa;padding:6px;margin:4px 0;font-size:12px;"><strong>组三(27%):</strong> 概率27.0% | 拿回' + bestResult.wins.g3.toFixed(2) + ' | 期望贡献' + (0.27 * bestResult.wins.g3).toFixed(2) + ' | 盈亏<span style="color:' + (bestResult.g3Profit >= 0 ? '#27ae60' : '#e74c3c') + '">' + (bestResult.g3Profit >= 0 ? '+' : '') + bestResult.g3Profit.toFixed(2) + '</span></div><div style="background:#f8f9fa;padding:6px;margin:4px 0;font-size:12px;"><strong>组六(72%):</strong> 概率72.0% | 拿回' + bestResult.wins.g6.toFixed(2) + ' | 期望贡献' + (0.72 * bestResult.wins.g6).toFixed(2) + ' | 盈亏<span style="color:' + (bestResult.g6Profit >= 0 ? '#27ae60' : '#e74c3c') + '">' + (bestResult.g6Profit >= 0 ? '+' : '') + bestResult.g6Profit.toFixed(2) + '</span></div></div>';
+        }
+
+        function analyzeSpan(odds, rebateRate) {
+            const spanOdds = Object.keys(odds).filter(code => code.startsWith('span_'));
+            if (spanOdds.length < 10) { alert('跨度必须10个全填才能计算'); return; }
+            const activeMethods = methods.filter(m => odds[m.code] && m.type === 'span');
+            const timesMap = {}, costs = {}, wins = {};
+            let totalCost = 0;
+            activeMethods.forEach(m => {
+                const detail = methodDetails[m.code];
+                timesMap[m.code] = detail.perGroup;
+                costs[m.code] = detail.perGroup;
+                totalCost += detail.perGroup;
+                wins[m.code] = detail.perGroup * odds[m.code];
+            });
+            const rebate = totalCost * rebateRate;
+            const realCost = totalCost - rebate;
+            let allWin = true, minProfit = Infinity, profits = {};
+            activeMethods.forEach(m => {
+                profits[m.code] = wins[m.code] - realCost;
+                if (profits[m.code] < 0) allWin = false;
+                if (profits[m.code] < minProfit) minProfit = profits[m.code];
+            });
+            const container = document.getElementById('results');
+            if (!allWin) {
+                let details = '', expectedWin = 0, probDetails = '';
+                activeMethods.forEach(m => {
+                    const prob = methodDetails[m.code].perGroup / 1000;
+                    const expWin = prob * wins[m.code];
+                    expectedWin += expWin;
+                    details += '<div style="background:#f8f9fa;padding:6px;margin:4px 0;font-size:12px;"><strong>' + m.name + ':</strong> 拿回' + wins[m.code].toFixed(2) + ' - 成本' + realCost.toFixed(2) + ' = <span style="color:' + (profits[m.code] >= 0 ? '#27ae60' : '#e74c3c') + '">' + (profits[m.code] >= 0 ? '+' : '') + profits[m.code].toFixed(2) + '</span>元</div>';
+                    probDetails += '<div style="background:#f8f9fa;padding:6px;margin:4px 0;font-size:12px;"><strong>' + m.name + ':</strong> 概率' + (prob*100).toFixed(1) + '% | 拿回' + wins[m.code].toFixed(2) + ' | 期望贡献' + expWin.toFixed(2) + ' | 盈亏<span style="color:' + (profits[m.code] >= 0 ? '#27ae60' : '#e74c3c') + '">' + (profits[m.code] >= 0 ? '+' : '') + profits[m.code].toFixed(2) + '</span></div>';
+                });
+                const expectedProfit = expectedWin - realCost;
+                container.innerHTML = '<div class="result-box"><h3>❌ 无必赢组合</h3><p>当前赔率下无必赢方案</p><hr style="margin:10px 0;border:none;border-top:1px solid #eee;"><div><strong>总成本:</strong> ' + totalCost.toFixed(2) + ' 元 | <strong>返水:</strong> ' + rebate.toFixed(2) + ' 元 | <strong>实际成本:</strong> ' + realCost.toFixed(2) + ' 元</div><hr style="margin:10px 0;border:none;border-top:1px solid #eee;">' + details + '</div><div class="result-box"><h3>📈 概率期望分析</h3><div style="background:#e8f4fc;padding:10px;border-radius:4px;margin-bottom:10px;"><strong>期望收益:</strong> <span style="color:' + (expectedProfit >= 0 ? '#27ae60' : '#e74c3c') + ';font-size:16px;font-weight:bold;">' + (expectedProfit >= 0 ? '+' : '') + expectedProfit.toFixed(2) + ' 元</span> | 期望收益率: ' + (expectedProfit / realCost * 100).toFixed(2) + '%</div><div style="font-size:11px;color:#888;margin-bottom:10px;">期望收益 = Σ(各选项概率 × 拿回) - 实际成本<br>长期平均结果，有波动风险</div>' + probDetails + '</div>';
+                return;
+            }
+            let costDetails = '', winDetails = '';
+            activeMethods.forEach(m => {
+                costDetails += '<div class="cost-item"><strong>' + m.name + '</strong>: ' + methodDetails[m.code].perGroup + '注x' + timesMap[m.code] + '倍</div>';
+                winDetails += '<div style="background:#f8f9fa;padding:8px;border-radius:4px;margin:6px 0;font-size:12px;"><strong>' + m.name + ':</strong> 拿回' + wins[m.code].toFixed(2) + ' - 成本' + realCost.toFixed(2) + ' = +' + profits[m.code].toFixed(2) + '元</div>';
+            });
+            let expectedWin = 0, probDetails = '';
+            activeMethods.forEach(m => {
+                const prob = methodDetails[m.code].perGroup / 1000;
+                expectedWin += prob * wins[m.code];
+                probDetails += '<div style="background:#f8f9fa;padding:6px;margin:4px 0;font-size:12px;"><strong>' + m.name + ':</strong> 概率' + (prob*100).toFixed(1) + '% | 拿回' + wins[m.code].toFixed(2) + ' | 期望贡献' + (prob * wins[m.code]).toFixed(2) + ' | 盈亏<span style="color:' + (profits[m.code] >= 0 ? '#27ae60' : '#e74c3c') + '">' + (profits[m.code] >= 0 ? '+' : '') + profits[m.code].toFixed(2) + '</span></div>';
+            });
+            container.innerHTML = '<div class="summary" style="background:linear-gradient(135deg,#3498db,#2980b9);"><h2>⚖️ 跨度均衡方案</h2><div class="big">+' + minProfit.toFixed(2) + ' 元</div><div>最低收益 | 收益率: ' + (minProfit / realCost * 100).toFixed(2) + '%</div></div><div class="result-box"><h3>📊 跨度方案详情</h3><div style="background:#e8f4fc;padding:10px;border-radius:4px;margin-bottom:15px;"><strong>方案规律:</strong> 每个跨度倍数 = 覆盖直码数</div>' + costDetails + '<hr style="margin:15px 0;border:none;border-top:1px solid #eee;"><div><strong>总成本:</strong> ' + totalCost.toFixed(2) + ' 元 | <strong>返水:</strong> ' + rebate.toFixed(2) + ' 元 | <strong>实际成本:</strong> ' + realCost.toFixed(2) + ' 元</div><hr style="margin:15px 0;border:none;border-top:1px solid #eee;">' + winDetails + '</div><div class="result-box"><h3>📈 概率期望分析</h3><div style="background:#e8f4fc;padding:10px;border-radius:4px;margin-bottom:10px;"><strong>期望收益:</strong> <span style="color:' + ((expectedWin - realCost) >= 0 ? '#27ae60' : '#e74c3c') + ';font-size:16px;font-weight:bold;">' + ((expectedWin - realCost) >= 0 ? '+' : '') + (expectedWin - realCost).toFixed(2) + ' 元</span> | 期望收益率: ' + ((expectedWin - realCost) / realCost * 100).toFixed(2) + '%</div><div style="font-size:11px;color:#888;margin-bottom:10px;">期望收益 = Σ(各选项概率 × 拿回) - 实际成本<br>长期平均结果，有波动风险</div>' + probDetails + '</div>';
+        }
+
+        function analyzeHe(odds, rebateRate) {
+            const heOdds = Object.keys(odds).filter(code => code.startsWith('he_'));
+            if (heOdds.length < 14) { alert('和值必须14个全填才能计算'); return; }
+            const activeMethods = methods.filter(m => odds[m.code] && m.type === 'he');
+            const timesMap = {}, costs = {}, wins = {};
+            let totalCost = 0;
+            activeMethods.forEach(m => {
+                const detail = methodDetails[m.code];
+                timesMap[m.code] = detail.perGroup;
+                costs[m.code] = 2 * detail.perGroup;
+                totalCost += 2 * detail.perGroup;
+                wins[m.code] = detail.perGroup * odds[m.code];
+            });
+            const rebate = totalCost * rebateRate;
+            const realCost = totalCost - rebate;
+            let allWin = true, minProfit = Infinity, profits = {};
+            activeMethods.forEach(m => {
+                profits[m.code] = wins[m.code] - realCost;
+                if (profits[m.code] < 0) allWin = false;
+                if (profits[m.code] < minProfit) minProfit = profits[m.code];
+            });
+            const container = document.getElementById('results');
+            if (!allWin) {
+                let details = '', expectedWin = 0, probDetails = '';
+                activeMethods.forEach(m => {
+                    const prob = 2 * methodDetails[m.code].perGroup / 1000;
+                    const expWin = prob * wins[m.code];
+                    expectedWin += expWin;
+                    details += '<div style="background:#f8f9fa;padding:6px;margin:4px 0;font-size:12px;"><strong>' + m.name + ':</strong> 拿回' + wins[m.code].toFixed(2) + ' - 成本' + realCost.toFixed(2) + ' = <span style="color:' + (profits[m.code] >= 0 ? '#27ae60' : '#e74c3c') + '">' + (profits[m.code] >= 0 ? '+' : '') + profits[m.code].toFixed(2) + '</span>元</div>';
+                    probDetails += '<div style="background:#f8f9fa;padding:6px;margin:4px 0;font-size:12px;"><strong>' + m.name + ':</strong> 概率' + (prob*100).toFixed(1) + '% | 拿回' + wins[m.code].toFixed(2) + ' | 期望贡献' + expWin.toFixed(2) + ' | 盈亏<span style="color:' + (profits[m.code] >= 0 ? '#27ae60' : '#e74c3c') + '">' + (profits[m.code] >= 0 ? '+' : '') + profits[m.code].toFixed(2) + '</span></div>';
+                });
+                const expectedProfit = expectedWin - realCost;
+                container.innerHTML = '<div class="result-box"><h3>❌ 无必赢组合</h3><p>当前赔率下无必赢方案</p><hr style="margin:10px 0;border:none;border-top:1px solid #eee;"><div><strong>总成本:</strong> ' + totalCost.toFixed(2) + ' 元 | <strong>返水:</strong> ' + rebate.toFixed(2) + ' 元 | <strong>实际成本:</strong> ' + realCost.toFixed(2) + ' 元</div><hr style="margin:10px 0;border:none;border-top:1px solid #eee;">' + details + '</div><div class="result-box"><h3>📈 概率期望分析</h3><div style="background:#e8f4fc;padding:10px;border-radius:4px;margin-bottom:10px;"><strong>期望收益:</strong> <span style="color:' + (expectedProfit >= 0 ? '#27ae60' : '#e74c3c') + ';font-size:16px;font-weight:bold;">' + (expectedProfit >= 0 ? '+' : '') + expectedProfit.toFixed(2) + ' 元</span> | 期望收益率: ' + (expectedProfit / realCost * 100).toFixed(2) + '%</div><div style="font-size:11px;color:#888;margin-bottom:10px;">期望收益 = Σ(各选项概率 × 拿回) - 实际成本<br>长期平均结果，有波动风险</div>' + probDetails + '</div>';
+                return;
+            }
+            let costDetails = '', winDetails = '';
+            activeMethods.forEach(m => {
+                costDetails += '<div class="cost-item"><strong>' + m.name + '</strong>: ' + methodDetails[m.code].perGroup + '注x' + timesMap[m.code] + '倍</div>';
+                winDetails += '<div style="background:#f8f9fa;padding:8px;border-radius:4px;margin:6px 0;font-size:12px;"><strong>' + m.name + ':</strong> 拿回' + wins[m.code].toFixed(2) + ' - 成本' + realCost.toFixed(2) + ' = +' + profits[m.code].toFixed(2) + '元</div>';
+            });
+            let expectedWin = 0, probDetails = '';
+            activeMethods.forEach(m => {
+                const prob = 2 * methodDetails[m.code].perGroup / 1000;
+                expectedWin += prob * wins[m.code];
+                probDetails += '<div style="background:#f8f9fa;padding:6px;margin:4px 0;font-size:12px;"><strong>' + m.name + ':</strong> 概率' + (prob*100).toFixed(1) + '% | 拿回' + wins[m.code].toFixed(2) + ' | 期望贡献' + (prob * wins[m.code]).toFixed(2) + ' | 盈亏<span style="color:' + (profits[m.code] >= 0 ? '#27ae60' : '#e74c3c') + '">' + (profits[m.code] >= 0 ? '+' : '') + profits[m.code].toFixed(2) + '</span></div>';
+            });
+            container.innerHTML = '<div class="summary" style="background:linear-gradient(135deg,#3498db,#2980b9);"><h2>⚖️ 和值均衡方案</h2><div class="big">+' + minProfit.toFixed(2) + ' 元</div><div>最低收益 | 收益率: ' + (minProfit / realCost * 100).toFixed(2) + '%</div></div><div class="result-box"><h3>📊 和值方案详情</h3><div style="background:#e8f4fc;padding:10px;border-radius:4px;margin-bottom:15px;"><strong>方案规律:</strong> 每个和值倍数 = 覆盖直码数</div>' + costDetails + '<hr style="margin:15px 0;border:none;border-top:1px solid #eee;"><div><strong>总成本:</strong> ' + totalCost.toFixed(2) + ' 元 | <strong>返水:</strong> ' + rebate.toFixed(2) + ' 元 | <strong>实际成本:</strong> ' + realCost.toFixed(2) + ' 元</div><hr style="margin:15px 0;border:none;border-top:1px solid #eee;">' + winDetails + '</div><div class="result-box"><h3>📈 概率期望分析</h3><div style="background:#e8f4fc;padding:10px;border-radius:4px;margin-bottom:10px;"><strong>期望收益:</strong> <span style="color:' + ((expectedWin - realCost) >= 0 ? '#27ae60' : '#e74c3c') + ';font-size:16px;font-weight:bold;">' + ((expectedWin - realCost) >= 0 ? '+' : '') + (expectedWin - realCost).toFixed(2) + ' 元</span> | 期望收益率: ' + ((expectedWin - realCost) / realCost * 100).toFixed(2) + '%</div><div style="font-size:11px;color:#888;margin-bottom:10px;">期望收益 = Σ(各选项概率 × 拿回) - 实际成本<br>长期平均结果，有波动风险</div>' + probDetails + '</div>';
+        }
+
+        function reset() {
+            const activeTab = document.querySelector('.tab-content.active').id;
+            let typeFilter;
+            if (activeTab === 'tab-group') typeFilter = ['g3', 'g6', 'baozi'];
+            else if (activeTab === 'tab-fushi') typeFilter = ['fushi'];
+            else if (activeTab === 'tab-span') typeFilter = ['span'];
+            else if (activeTab === 'tab-he') typeFilter = ['he'];
+            methods.forEach(m => {
+                if (typeFilter && !typeFilter.includes(m.type)) return;
+                document.getElementById(m.code).value = '';
+            });
+            document.getElementById('rebate').value = '9.7';
+            const results = document.getElementById('results');
+            if (activeTab === 'tab-group') {
+                results.innerHTML = '<div class="empty"><p>👈 每类只能填一项，三类都要填</p><p style="margin-top:10px;font-size:12px;">组三、组六只能各选一项，豹子必填</p></div>';
+            } else if (activeTab === 'tab-fushi') {
+                results.innerHTML = '<div class="empty"><p>👈 请填入复式玩法赔率</p><p style="margin-top:10px;font-size:12px;">与组选/跨度/和值互不相干</p></div>';
+            } else {
+                results.innerHTML = '<div class="empty"><p>👈 全填才能计算</p><p style="margin-top:10px;font-size:12px;">与组选互不相干</p></div>';
+            }
+        }
+    </script>
+</body>
+</html>
