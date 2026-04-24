@@ -52,6 +52,14 @@
         .tab-btn.active { color: white; border-bottom-color: #27ae60; }
         .tab-content { display: none; flex: 1; overflow: hidden; }
         .tab-content.active { display: flex; }
+        .manual-wrapper { padding: 10px; flex: 1; overflow-y: auto; }
+        .manual-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 10px; }
+        .manual-table th, .manual-table td { border: 1px solid #ddd; padding: 6px; text-align: center; }
+        .manual-table th { background: #f8f9fa; color: #555; }
+        .manual-table select, .manual-table input { padding: 4px; border: 1px solid #ddd; border-radius: 3px; font-size: 11px; }
+        .manual-table select { min-width: 80px; }
+        .manual-btn-add { background: #3498db; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .manual-btn-remove { background: #e74c3c; color: white; border: none; padding: 3px 6px; border-radius: 3px; cursor: pointer; font-size: 11px; }
     </style>
 </head>
 <body>
@@ -63,6 +71,7 @@
                 <button class="tab-btn" onclick="switchTab('fushi', event)">复式</button>
                 <button class="tab-btn" onclick="switchTab('span', event)">跨度</button>
                 <button class="tab-btn" onclick="switchTab('he', event)">和值</button>
+                <button class="tab-btn" onclick="switchTab('manual', event)">人工分析</button>
             </div>
             <div class="tab-content active" id="tab-group">
                 <div class="sections-wrapper">
@@ -170,6 +179,39 @@
                             <div class="item"><label>和值13-14 <span class="sub">75注</span></label><input type="number" id="he_13_14" data-type="he" step="0.1" value="12"></div>
                         </div>
                     </div>
+                </div>
+            </div>
+            <div class="tab-content" id="tab-manual">
+                <div class="manual-wrapper">
+                    <div class="section">
+                        <h3>自定义下注分析</h3>
+                        <p style="font-size: 11px; color: #888; margin-bottom: 8px;">选择玩法、填写号码、赔率和金额</p>
+                    </div>
+                    <table class="manual-table" id="manualTable">
+                        <thead>
+                            <tr>
+                                <th>序号</th>
+                                <th>标签</th>
+                                <th>玩法</th>
+                                <th>号码</th>
+                                <th>赔率</th>
+                                <th>金额</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="manualTbody">
+                            <tr>
+                                <td>1</td>
+                                <td><input type="text" id="manual_label_0" placeholder="如A组" style="width:50px;"></td>
+                                <td><select id="manual_method_0" onchange="onManualMethodChange(0)"></select></td>
+                                <td><input type="text" id="manual_numbers_0" style="width:60px;"></td>
+                                <td><input type="number" id="manual_odds_0" step="0.1" style="width:50px;"></td>
+                                <td><input type="number" id="manual_amount_0" step="1" style="width:50px;"></td>
+                                <td><button class="manual-btn-remove" onclick="removeManualRow(0)">×</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <button class="manual-btn-add" onclick="addManualRow()">+ 添加一行</button>
                 </div>
             </div>
             <div class="bottom-bar">
@@ -334,6 +376,9 @@
                 results.innerHTML = '<div class="empty"><p>👈 全填才能计算</p><p style="margin-top:10px;font-size:12px;">与组选互不相干</p></div>';
             } else if (tab === 'fushi') {
                 results.innerHTML = '<div class="empty"><p>👈 请填入复式玩法赔率</p><p style="margin-top:10px;font-size:12px;">与组选/跨度/和值互不相干</p></div>';
+            } else if (tab === 'manual') {
+                results.innerHTML = '<div class="empty"><p>👈 选择玩法、填入号码、赔率和金额</p><p style="margin-top:10px;font-size:12px;">点击分析按钮计算</p></div>';
+                initManual();
             } else {
                 results.innerHTML = '<div class="empty"><p>👈 每类只能填一项，三类都要填</p><p style="margin-top:10px;font-size:12px;">组三、组六只能各选一项，豹子必填</p></div>';
             }
@@ -493,6 +538,7 @@
             if (activeTab === 'tab-fushi') { analyzeFushi(odds, rebateRate); return; }
             if (activeTab === 'tab-span') { analyzeSpan(odds, rebateRate); return; }
             if (activeTab === 'tab-he') { analyzeHe(odds, rebateRate); return; }
+            if (activeTab === 'tab-manual') { analyzeManual(); return; }
             const g3Odds = Object.keys(odds).filter(code => methods.find(m => m.code === code && m.type === 'g3'));
             const g6Odds = Object.keys(odds).filter(code => methods.find(m => m.code === code && m.type === 'g6'));
             const baoziOdds = Object.keys(odds).filter(code => methods.find(m => m.code === code && m.type === 'baozi'));
@@ -729,6 +775,303 @@
             } else {
                 results.innerHTML = '<div class="empty"><p>👈 全填才能计算</p><p style="margin-top:10px;font-size:12px;">与组选互不相干</p></div>';
             }
+        }
+        function initManual() {
+            var select = document.getElementById('manual_method_0');
+            if (select && select.options.length <= 1) {
+                for (var i = 0; i < methods.length; i++) {
+                    var opt = document.createElement('option');
+                    opt.value = methods[i].code;
+                    opt.textContent = methods[i].name;
+                    select.appendChild(opt);
+                }
+            }
+            onManualMethodChange(0);
+        }
+
+        function onManualMethodChange(rowIdx) {
+            var select = document.getElementById('manual_method_' + rowIdx);
+            if (!select) return;
+            var code = select.value;
+            var numInput = document.getElementById('manual_numbers_' + rowIdx);
+            var oddsInput = document.getElementById('manual_odds_' + rowIdx);
+            if (!numInput) return;
+            
+            var noNeedNumbers = code.indexOf('baozi') >= 0 || code.indexOf('span_') >= 0 || code.indexOf('he_') >= 0 || code.indexOf('_all') >= 0;
+            
+            if (noNeedNumbers) {
+                numInput.disabled = true;
+                numInput.placeholder = '自动';
+                numInput.value = '';
+            } else {
+                numInput.disabled = false;
+                numInput.value = '';
+                oddsInput.value = '';
+                var needDigits = 0;
+                if (code.indexOf('g3_') >= 0) needDigits = parseInt(code.replace('g3_', ''));
+                else if (code.indexOf('zg3_') >= 0) needDigits = parseInt(code.replace('zg3_', ''));
+                else if (code.indexOf('g6_') >= 0) needDigits = parseInt(code.replace('g6_', ''));
+                else if (code.indexOf('zg6_') >= 0) needDigits = parseInt(code.replace('zg6_', ''));
+                else if (code.indexOf('fushi_') >= 0) needDigits = parseInt(code.replace('fushi_', ''));
+                numInput.placeholder = needDigits > 0 ? '输入' + needDigits + '位' : '号码';
+            }
+        }
+
+        function addManualRow() {
+            var tbody = document.getElementById('manualTbody');
+            var rows = tbody.querySelectorAll('tr').length;
+            var tr = document.createElement('tr');
+            tr.innerHTML = '<td>' + (rows + 1) + '</td>' +
+                '<td><input type="text" id="manual_label_' + rows + '" placeholder="如A组" style="width:50px;"></td>' +
+                '<td><select id="manual_method_' + rows + '" onchange="onManualMethodChange(' + rows + ')"></select></td>' +
+                '<td><input type="text" id="manual_numbers_' + rows + '" style="width:60px;"></td>' +
+                '<td><input type="number" id="manual_odds_' + rows + '" step="0.1" style="width:50px;"></td>' +
+                '<td><input type="number" id="manual_amount_' + rows + '" step="1" style="width:50px;"></td>' +
+                '<td><button class="manual-btn-remove" onclick="removeManualRow(' + rows + ')">×</button></td>';
+            tbody.appendChild(tr);
+            var select = document.getElementById('manual_method_' + rows);
+            for (var i = 0; i < methods.length; i++) {
+                var opt = document.createElement('option');
+                opt.value = methods[i].code;
+                opt.textContent = methods[i].name;
+                select.appendChild(opt);
+            }
+        }
+
+        function removeManualRow(idx) {
+            var tbody = document.getElementById('manualTbody');
+            var rows = tbody.querySelectorAll('tr');
+            if (rows.length > 1) {
+                rows[idx].remove();
+                var newRows = tbody.querySelectorAll('tr');
+                for (var i = 0; i < newRows.length; i++) {
+                    newRows[i].cells[0].textContent = i + 1;
+                }
+            }
+        }
+
+        function getManualCover(code, numbers) {
+            var cover = [];
+            var type = '';
+            // 沾边赖必须优先检查（在普通组三/组六之前）
+            if (code.indexOf('zg3') >= 0 || code.indexOf('zg6') >= 0) type = 'zl';
+            else if (code.indexOf('g3') >= 0) type = 'g3';
+            else if (code.indexOf('g6') >= 0) type = 'g6';
+            else if (code.indexOf('baozi') >= 0) type = 'baozi';
+            else if (code.indexOf('span_') >= 0) type = 'span';
+            else if (code.indexOf('fushi_') >= 0) type = 'fushi';
+            else if (code.indexOf('he_') >= 0) type = 'he';
+            
+            if ((type === 'g3' || type === 'g6' || type === 'zl') && code.indexOf('_all') < 0) {
+                if (!numbers) return [];
+                var digits = numbers.replace(/[,，\s]+/g, '').split('');
+                if (type === 'g3') {
+                    for (var a = 0; a < digits.length; a++) {
+                        for (var b = 0; b < digits.length; b++) {
+                            if (b === a) continue;
+                            for (var c = 0; c < digits.length; c++) {
+                                if (c === a || c === b) continue;
+                                var d1 = digits[a], d2 = digits[b], d3 = digits[c];
+                                cover.push(d1+d2+d3, d1+d3+d2, d2+d1+d3, d2+d3+d1, d3+d1+d2, d3+d2+d1);
+                            }
+                        }
+                    }
+                } else if (type === 'g6') {
+                    for (var a = 0; a < digits.length; a++) {
+                        for (var b = a + 1; b < digits.length; b++) {
+                            for (var c = b + 1; c < digits.length; c++) {
+                                var d1 = digits[a], d2 = digits[b], d3 = digits[c];
+                                cover.push(d1+d2+d3, d1+d3+d2, d2+d1+d3, d2+d3+d1, d3+d1+d2, d3+d2+d1);
+                            }
+                        }
+                    }
+                } else if (type === 'zl') {
+                    for (var di = 0; di < digits.length; di++) {
+                        var d = digits[di];
+                        for (var i = 0; i <= 9; i++) {
+                            for (var j = 0; j <= 9; j++) {
+                                for (var k = 0; k <= 9; k++) {
+                                    var s = '' + i + j + k;
+                                    if (s.indexOf(d) >= 0 && i !== j && j !== k && i !== k) cover.push(s);
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (code.indexOf('_all') >= 0) {
+                if (code.indexOf('g3_all') >= 0) {
+                    for (var i = 0; i <= 9; i++) {
+                        for (var j = 0; j <= 9; j++) {
+                            for (var k = 0; k <= 9; k++) {
+                                if ((i===j && j!==k) || (i===k && k!==j) || (j===k && k!==i)) cover.push(''+i+j+k);
+                            }
+                        }
+                    }
+                } else if (code.indexOf('g6_all') >= 0) {
+                    for (var i = 0; i <= 9; i++) {
+                        for (var j = 0; j <= 9; j++) {
+                            for (var k = 0; k <= 9; k++) {
+                                if (i !== j && j !== k && i !== k) cover.push(''+i+j+k);
+                            }
+                        }
+                    }
+                }
+            } else if (type === 'span') {
+                var span = parseInt(code.replace('span_', ''));
+                for (var i = 0; i <= 9; i++) {
+                    for (var j = 0; j <= 9; j++) {
+                        for (var k = 0; k <= 9; k++) {
+                            if (Math.max(i,j,k) - Math.min(i,j,k) === span) cover.push(''+i+j+k);
+                        }
+                    }
+                }
+            } else if (type === 'he') {
+                var he = parseInt(code.replace('he_', ''));
+                for (var i = 0; i <= 9; i++) {
+                    for (var j = 0; j <= 9; j++) {
+                        for (var k = 0; k <= 9; k++) {
+                            if (i+j+k === he) cover.push(''+i+j+k);
+                        }
+                    }
+                }
+            } else if (type === 'baozi') {
+                for (var d = 0; d <= 9; d++) cover.push(''+d+d+d);
+            } else if (type === 'fushi') {
+                if (!numbers) return [];
+                var digits = numbers.replace(/[,，\s]+/g, '').split('');
+                for (var a = 0; a < digits.length; a++) {
+                    for (var b = 0; b < digits.length; b++) {
+                        for (var c = 0; c < digits.length; c++) {
+                            cover.push(digits[a]+digits[b]+digits[c]);
+                        }
+                    }
+                }
+            }
+            return [...new Set(cover)];
+        }
+
+        function analyzeManual() {
+            var rebateRate = (parseFloat(document.getElementById('rebate').value) || 0) / 100;
+            var tbody = document.getElementById('manualTbody');
+            var rows = tbody.querySelectorAll('tr');
+            var bets = [];
+            
+            for (var i = 0; i < rows.length; i++) {
+                var select = rows[i].querySelector('select');
+                var inputs = rows[i].querySelectorAll('input');
+                var code = select.value;
+                var label = inputs[0].value.trim() || '注' + (i + 1);
+                var numbers = inputs[1].value.trim();
+                var odds = parseFloat(inputs[2].value);
+                var amount = parseFloat(inputs[3].value);
+                
+                if (code && !isNaN(odds) && odds > 0 && !isNaN(amount) && amount > 0) {
+                    var cover = getManualCover(code, numbers);
+                    bets.push({code: code, label: label, numbers: numbers, odds: odds, amount: amount, cover: cover});
+                }
+            }
+            
+            if (bets.length === 0) { alert('请至少填写一组玩法、赔率和金额'); return; }
+            
+            // 枚举1000直码
+            var caseGroups = {};
+            var betCoverMap = [];
+            for (var i = 0; i < bets.length; i++) {
+                var bet = bets[i];
+                var coverSet = new Set(bet.cover);
+                betCoverMap.push({label: bet.label, cover: coverSet, amount: bet.amount, odds: bet.odds});
+            }
+            
+            for (var a = 0; a <= 9; a++) {
+                for (var b = 0; b <= 9; b++) {
+                    for (var c = 0; c <= 9; c++) {
+                        var code = '' + a + b + c;
+                        var matched = [];
+                        for (var i = 0; i < betCoverMap.length; i++) {
+                            if (betCoverMap[i].cover.has(code)) {
+                                matched.push(betCoverMap[i].label);
+                            }
+                        }
+                        // 生成状态key: 不中/只中A/只中B/AB都中
+                        var key;
+                        if (matched.length === 0) {
+                            key = '不中';
+                        } else if (matched.length === 1) {
+                            key = '只中' + matched[0];
+                        } else {
+                            matched.sort();
+                            key = matched.join('+') + '都中';
+                        }
+                        if (!caseGroups[key]) caseGroups[key] = [];
+                        caseGroups[key].push(code);
+                    }
+                }
+            }
+            
+            var container = document.getElementById('results');
+            var totalCost = 0;
+            for (var i = 0; i < bets.length; i++) { totalCost += bets[i].amount; }
+            var rebate = totalCost * rebateRate;
+            var caseStats = [];
+            
+            for (var key in caseGroups) {
+                var prob = caseGroups[key].length / 1000;
+                var totalPayout = 0;
+                for (var i = 0; i < betCoverMap.length; i++) {
+                    var bc = betCoverMap[i];
+                    var isHit = false;
+                    if (key === '不中') {
+                        isHit = false;
+                    } else {
+                        // 解析状态key判断是否命中
+                        var hitLabels = key.replace('都中', '').replace('只中', '').split('+').filter(function(x) { return x; });
+                        isHit = hitLabels.indexOf(bc.label) >= 0;
+                    }
+                    if (isHit) { totalPayout += bc.amount * bc.odds; }
+                }
+                var profit = totalCost - rebate - totalPayout;
+                caseStats.push({name: key, profit: profit, prob: prob});
+            }
+            
+            var totalCoverSet = new Set();
+            for (var i = 0; i < bets.length; i++) {
+                bets[i].cover.forEach(function(c) { totalCoverSet.add(c); });
+            }
+            var totalCover = totalCoverSet.size;
+            
+            var houseProfit = 0;
+            for (var i = 0; i < caseStats.length; i++) {
+                houseProfit += caseStats[i].profit * caseStats[i].prob;
+            }
+            var houseRoi = totalCost > 0 ? (houseProfit / totalCost) * 100 : 0;
+            
+            var isSureWin = totalCover >= 1000;
+            for (var i = 0; i < caseStats.length; i++) {
+                if (caseStats[i].profit <= 0) { isSureWin = false; break; }
+            }
+            
+            var betDetails = '';
+            for (var i = 0; i < bets.length; i++) {
+                betDetails += '<div class="cost-item"><strong>' + bets[i].label + '</strong>(' + bets[i].code + '): ' + bets[i].amount + '元 × ' + bets[i].odds + '赔率，覆盖<strong>' + bets[i].cover.length + '</strong>个直码</div>';
+            }
+            
+            var caseDetails = '';
+            for (var i = 0; i < caseStats.length; i++) {
+                var c = caseStats[i];
+                var color = c.profit > 0 ? '#e74c3c' : '#27ae60';
+                var sign = c.profit > 0 ? '+' : '';
+                caseDetails += '<div style="background:#f8f9fa;padding:6px;margin:4px 0;font-size:12px;"><strong>' + c.name + '</strong>: 庄<span style="color:' + color + '">' + sign + c.profit.toFixed(2) + '</span>元 (' + (c.prob*100).toFixed(1) + '%)</div>';
+            }
+            
+            if (isSureWin && totalCover >= 1000) {
+                container.innerHTML = '<div class="summary" style="background:linear-gradient(135deg,#27ae60,#2ecc71);"><h2>✓ 必赢方案</h2><div class="big">覆盖' + totalCover + '/1000</div><div>庄家利润: ' + houseRoi.toFixed(2) + '%</div></div><div class="result-box"><h3>📊 下注详情</h3>' + betDetails + '<hr style="margin:10px 0;border:none;border-top:1px solid #eee;"><div><strong>总成本:</strong> ' + totalCost.toFixed(2) + ' 元 | <strong>返水:</strong> ' + rebate.toFixed(2) + ' 元</div></div><div class="result-box"><h3>📈 各情况盈亏</h3>' + caseDetails + '</div>';
+            } else {
+                container.innerHTML = '<div class="result-box"><h3>' + (isSureWin ? '✓ 必赢' : '❌ 非必赢') + '</h3><p>覆盖 ' + totalCover + '/1000 直码</p><hr style="margin:10px 0;border:none;border-top:1px solid #eee;">' + betDetails + '<hr style="margin:10px 0;border:none;border-top:1px solid #eee;"><div><strong>总成本:</strong> ' + totalCost.toFixed(2) + ' 元 | <strong>返水:</strong> ' + rebate.toFixed(2) + ' 元</div></div><div class="result-box"><h3>📈 各情况盈亏 (' + houseRoi.toFixed(2) + '% 庄家利润)</h3>' + caseDetails + '</div>';
+            }
+        }
+
+        if (document.addEventListener) {
+            document.addEventListener('DOMContentLoaded', initManual);
         }
     </script>
 </body>
