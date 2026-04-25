@@ -808,10 +808,10 @@
                 numInput.value = '';
                 oddsInput.value = '';
                 var needDigits = 0;
-                if (code.indexOf('g3_') >= 0) needDigits = parseInt(code.replace('g3_', ''));
-                else if (code.indexOf('zg3_') >= 0) needDigits = parseInt(code.replace('zg3_', ''));
-                else if (code.indexOf('g6_') >= 0) needDigits = parseInt(code.replace('g6_', ''));
+                if (code.indexOf('zg3_') >= 0) needDigits = parseInt(code.replace('zg3_', ''));
                 else if (code.indexOf('zg6_') >= 0) needDigits = parseInt(code.replace('zg6_', ''));
+                else if (code.indexOf('g3_') >= 0) needDigits = parseInt(code.replace('g3_', ''));
+                else if (code.indexOf('g6_') >= 0) needDigits = parseInt(code.replace('g6_', ''));
                 else if (code.indexOf('fushi_') >= 0) needDigits = parseInt(code.replace('fushi_', ''));
                 numInput.placeholder = needDigits > 0 ? '输入' + needDigits + '位' : '号码';
             }
@@ -853,8 +853,9 @@
         function getManualCover(code, numbers) {
             var cover = [];
             var type = '';
-            // 沾边赖必须优先检查（在普通组三/组六之前）
-            if (code.indexOf('zg3') >= 0 || code.indexOf('zg6') >= 0) type = 'zl';
+            // 沾边赖必须优先检查（因为 zg3 包含 g3，zg6 包含 g6）
+            if (code.indexOf('zg3') >= 0) type = 'zg3';
+            else if (code.indexOf('zg6') >= 0) type = 'zg6';
             else if (code.indexOf('g3') >= 0) type = 'g3';
             else if (code.indexOf('g6') >= 0) type = 'g6';
             else if (code.indexOf('baozi') >= 0) type = 'baozi';
@@ -862,17 +863,42 @@
             else if (code.indexOf('fushi_') >= 0) type = 'fushi';
             else if (code.indexOf('he_') >= 0) type = 'he';
             
-            if ((type === 'g3' || type === 'g6' || type === 'zl') && code.indexOf('_all') < 0) {
+            if ((type === 'g3' || type === 'g6' || type === 'zg3' || type === 'zg6') && code.indexOf('_all') < 0) {
                 if (!numbers) return [];
                 var digits = numbers.replace(/[,，\s]+/g, '').split('');
+                var numDigits = digits.length;
+                
+                // 解析需要几位：从code中提取，如g3_2表示需要2个数字
+                var needDigits = 0;
+                if (code.indexOf('zg3_') >= 0) needDigits = parseInt(code.replace('zg3_', ''));
+                else if (code.indexOf('zg6_') >= 0) needDigits = parseInt(code.replace('zg6_', ''));
+                else if (code.indexOf('g3_') >= 0) needDigits = parseInt(code.replace('g3_', ''));
+                else if (code.indexOf('g6_') >= 0) needDigits = parseInt(code.replace('g6_', ''));
+                else if (code.indexOf('fushi_') >= 0) needDigits = parseInt(code.replace('fushi_', ''));
+                
                 if (type === 'g3') {
-                    for (var a = 0; a < digits.length; a++) {
-                        for (var b = 0; b < digits.length; b++) {
-                            if (b === a) continue;
-                            for (var c = 0; c < digits.length; c++) {
-                                if (c === a || c === b) continue;
-                                var d1 = digits[a], d2 = digits[b], d3 = digits[c];
-                                cover.push(d1+d2+d3, d1+d3+d2, d2+d1+d3, d2+d3+d1, d3+d1+d2, d3+d2+d1);
+                    // 组三N码：用户选N个数字，选其中2个作为对子，生成2个一样的+1个不同的排列
+                    // 如选12：生成112,121,211,122,212,221（6个直码，每个对子6注）
+                    if (numDigits >= 2 && needDigits >= 2) {
+                        for (var a = 0; a < numDigits; a++) {
+                            for (var b = a + 1; b < numDigits; b++) {
+                                var d1 = digits[a], d2 = digits[b];
+                                // 两个相等的+第三个是另一个：112,121,211（两个1一个2的各种排列）
+                                cover.push(d1 + d1 + d2, d1 + d2 + d1, d2 + d1 + d1);
+                                // 另一个+两个相等的：122,212,221
+                                cover.push(d1 + d2 + d2, d2 + d1 + d2, d2 + d2 + d1);
+                            }
+                        }
+                    } else if (numDigits >= 3) {
+                        // 原逻辑：3个以上数字随便选3个排列
+                        for (var a = 0; a < digits.length; a++) {
+                            for (var b = 0; b < digits.length; b++) {
+                                if (b === a) continue;
+                                for (var c = 0; c < digits.length; c++) {
+                                    if (c === a || c === b) continue;
+                                    var d1 = digits[a], d2 = digits[b], d3 = digits[c];
+                                    cover.push(d1 + d2 + d3, d1 + d3 + d2, d2 + d1 + d3, d2 + d3 + d1, d3 + d1 + d2, d3 + d2 + d1);
+                                }
                             }
                         }
                     }
@@ -885,13 +911,29 @@
                             }
                         }
                     }
-                } else if (type === 'zl') {
+                } else if (type === 'zg3') {
+                    // 沾边赖组三：只需包含指定数字任意一位，且是组三（有对子）
                     for (var di = 0; di < digits.length; di++) {
                         var d = digits[di];
                         for (var i = 0; i <= 9; i++) {
                             for (var j = 0; j <= 9; j++) {
                                 for (var k = 0; k <= 9; k++) {
                                     var s = '' + i + j + k;
+                                    // 组三：必须包含指定数字d，且有两个数字相等
+                                    if (s.indexOf(d) >= 0 && ((i===j && j!==k) || (i===k && k!==j) || (j===k && k!==i))) cover.push(s);
+                                }
+                            }
+                        }
+                    }
+                } else if (type === 'zg6') {
+                    // 沾边赖组六：只需包含指定数字任意一位，且是组六（无对子）
+                    for (var di = 0; di < digits.length; di++) {
+                        var d = digits[di];
+                        for (var i = 0; i <= 9; i++) {
+                            for (var j = 0; j <= 9; j++) {
+                                for (var k = 0; k <= 9; k++) {
+                                    var s = '' + i + j + k;
+                                    // 组六：必须包含指定数字d，且三个数字都不相等
                                     if (s.indexOf(d) >= 0 && i !== j && j !== k && i !== k) cover.push(s);
                                 }
                             }
